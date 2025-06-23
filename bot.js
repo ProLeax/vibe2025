@@ -1,7 +1,8 @@
+require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const mysql = require('mysql2/promise');
 
-const token = '7752711526:AAHixCkfu3waU8-HhLtGoIALJXcXh195BXw';
+const token = process.env.TELEGRAM_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
 const dbConfig = {
@@ -94,3 +95,4 @@ bot.setMyCommands([
     { command: '/edit', description: 'Редактировать задачу (/edit id текст)' },
     { command: '/help', description: 'Справка по командам' }
 ]);
+console.log('Telegram bot started');
