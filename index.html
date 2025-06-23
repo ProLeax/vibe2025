@@ -1,104 +1,144 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To-Do List</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        #todoList {
-            border-collapse: collapse;
-            width: 70%;
-            margin: 0 auto;
-        }
-        #todoList th, #todoList td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        #todoList th {
-            background-color: #f0f0f0;
-        }
-        #todoList th:first-child, #todoList th:last-child {
-            width: 5%;
-        }
-        #todoList th:nth-child(2) {
-            width: 90%;
-        }
-        .add-form {
-            margin-top: 20px;
-            width: 70%;
-            margin: 20px auto;
-        }
-        .add-form input[type="text"] {
-            padding: 8px;
-            width: 70%;
-        }
-        .add-form button {
-            padding: 8px;
-            width: 20%;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>To-Do List with Auth</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    .form { width: 300px; margin: 20px auto; }
+    .form input { width: 100%; padding: 8px; margin: 5px 0; }
+    .form button { width: 100%; padding: 8px; }
+    table { width: 70%; margin: 20px auto; border-collapse: collapse; }
+    table, th, td { border: 1px solid #ddd; }
+    th, td { padding: 8px; text-align: left; }
+  </style>
 </head>
 <body>
 
-<h2 style="text-align: center;">To-Do List</h2>
+  <div class="form" id="authForm">
+    <h3>Register</h3>
+    <input id="regUser" placeholder="Username">
+    <input id="regPass" type="password" placeholder="Password">
+    <button onclick="register()">Register</button>
 
-<table id="todoList">
-    <thead>
-        <tr>
-            <th>Number</th>
-            <th>Text</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody id="listBody">
-        {{rows}}
-    </tbody>
-</table>
+    <h3>Login</h3>
+    <input id="loginUser" placeholder="Username">
+    <input id="loginPass" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+  </div>
 
-<div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
-</div>
+  <div id="todoApp" style="display:none;">
+    <h2 style="text-align:center;">Your To-Do List</h2>
+    <table>
+      <thead>
+        <tr><th>#</th><th>Task</th><th>Action</th></tr>
+      </thead>
+      <tbody id="listBody">{{rows}}</tbody>
+    </table>
+    <div class="form">
+      <input id="newItem" placeholder="Enter new task...">
+      <button onclick="addItem()">Add Task</button>
+    </div>
+    <button style="display:block; margin:10px auto;" onclick="logout()">Logout</button>
+  </div>
 
-<script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
+  <script>
+    // Вспомогательныe функции
+    function showApp() {
+      document.getElementById('authForm').style.display = 'none';
+      document.getElementById('todoApp').style.display = 'block';
+      renderList();
+    }
+    function showAuth() {
+      document.getElementById('authForm').style.display = 'block';
+      document.getElementById('todoApp').style.display = 'none';
+    }
+    function handleAuthResponse(ok) {
+      if (ok) showApp();
+      else alert('Invalid credentials');
     }
 
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
-
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
-        }
+    // Регистрация
+    async function register() {
+      const username = document.getElementById('regUser').value;
+      const password = document.getElementById('regPass').value;
+      const res = await fetch('/register', {
+        method: 'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ username, password })
+      });
+      if (res.ok) alert('Registered! Now log in.');
+      else alert('Registration failed');
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+    // Вход
+    async function login() {
+      const username = document.getElementById('loginUser').value;
+      const password = document.getElementById('loginPass').value;
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ username, password })
+      });
+      handleAuthResponse(res.ok);
     }
-</script>
 
+    // Выход
+    async function logout() {
+      document.cookie = 'userId=; max-age=0';
+      showAuth();
+    }
+
+    // CRUD для задач
+    async function renderList() {
+      const res = await fetch('/items');
+      if (!res.ok) return showAuth();
+      const items = await res.json();
+      const tbody = document.getElementById('listBody');
+      tbody.innerHTML = items.map((it,i)=>
+        `<tr>
+          <td>${i+1}</td>
+          <td>${it.text}</td>
+          <td>
+            <button onclick="editItem(${it.id}, '${it.text.replace(/'/g,"\\'")}')">Edit</button>
+            <button onclick="deleteItem(${it.id})">Delete</button>
+          </td>
+        </tr>`
+      ).join('');
+    }
+
+    async function addItem() {
+      const text = document.getElementById('newItem').value.trim();
+      if (!text) return;
+      await fetch('/items', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ text })
+      });
+      renderList();
+    }
+    async function deleteItem(id) {
+      await fetch(`/items/${id}`, { method:'DELETE' });
+      renderList();
+    }
+    async function editItem(id, oldText) {
+      const newText = prompt('Edit task:', oldText);
+      if (!newText) return;
+      await fetch(`/items/${id}`, {
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ text: newText })
+      });
+      renderList();
+    }
+
+    // При загрузке
+    document.addEventListener('DOMContentLoaded', async ()=>{
+      // пробуем загрузить список
+      const res = await fetch('/items');
+      res.ok ? showApp() : showAuth();
+    });
+  </script>
 </body>
 </html>
