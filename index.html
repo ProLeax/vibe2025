@@ -83,20 +83,20 @@
         });
     }
 
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
+    async  function addItem() {
+         const newItemInput = document.getElementById('newItem');
         const newItemText = newItemInput.value.trim();
 
         if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
-        }
-    }
+            await fetch('/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: newItemText })
+            });
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+            newItemInput.value = '';
+            location.reload(); // обновление списка
+        }
     }
 </script>
 
