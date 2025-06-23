@@ -49,26 +49,23 @@
 <table id="todoList">
     <thead>
         <tr>
-            <th>Number</th>
-            <th>Text</th>
-            <th>Action</th>
+            <th>#</th>
+            <th>Task</th>
+            <th>Actions</th>
         </tr>
     </thead>
-    <tbody id="listBody">
-        {{rows}}
-    </tbody>
+    <tbody id="listBody"></tbody>
 </table>
 
 <div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
+    <input type="text" id="newItem" placeholder="Enter new task...">
+    <button onclick="addItem()">Add Task</button>
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
+    async function renderList() {
+        const res = await fetch('/items');
+        const items = await res.json();
         const listBody = document.getElementById('listBody');
         listBody.innerHTML = '';
 
@@ -76,28 +73,57 @@
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
+                <td id="text-${item.id}">${escapeHtml(item.text)}</td>
+                <td>
+                    <button onclick="startEdit(${item.id})">Edit</button>
+                    <button onclick="deleteItem(${item.id})">Delete</button>
+                </td>
             `;
             listBody.appendChild(row);
         });
     }
 
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
-
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
-        }
-    }
-
-    function removeItem(index) {
-        items.splice(index, 1);
+    async function addItem() {
+        const input = document.getElementById('newItem');
+        const text = input.value.trim();
+        if (!text) return alert('Enter a task');
+        await fetch('/items', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+        });
+        input.value = '';
         renderList();
     }
+
+    async function deleteItem(id) {
+        await fetch(`/items/${id}`, { method: 'DELETE' });
+        renderList();
+    }
+
+    function startEdit(id) {
+        const td = document.getElementById(`text-${id}`);
+        const oldText = td.innerText;
+        td.innerHTML = `<input class="edit-input" id="edit-${id}" value="${oldText}"> <button onclick="confirmEdit(${id})">Save</button>`;
+    }
+
+    async function confirmEdit(id) {
+        const input = document.getElementById(`edit-${id}`);
+        const text = input.value.trim();
+        if (!text) return alert('Text cannot be empty');
+        await fetch(`/items/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+        });
+        renderList();
+    }
+
+    function escapeHtml(text) {
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    document.addEventListener('DOMContentLoaded', renderList);
 </script>
 
 </body>
