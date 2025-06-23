@@ -7,11 +7,12 @@ const PORT = 3000;
 
 // Database connection settings
 const dbConfig = {
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'todolist',
-  };
+  host: '127.0.0.1', // Только IP/домен без порта
+  port: 3307,         // Порт вынесен отдельно
+  user: 'root',
+  password: '',
+  database: 'todolist',
+};
 
 
   async function retrieveListItems() {
